@@ -3,14 +3,20 @@
 
 //Midi messages per Button  [page] [Message] [Val_Message]
 //    Example:  - Two messages when we press Button 2 On Page 1
-//              Page: 1 - Message: 0 - Value 001002127000
+//              Page: 1 - Message: 0 - Value 001002127000  [Channel]
 //              Page: 1 - Message: 1 - Value 002001127000
 //              
+//   Val_Message = 12 bytes as below
+//      - 3 bytes - Channel
+//      - 3 bytes - CC Midi
+//      - 3 bytes - CC Val On
+//      - 3 bytes - CC Val Off
+//  
 
   char Val_msg_btn1[3][5][13] = {
                                   {{"001069000000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                   {{"001001127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
-                                  {{"001002127000"}, {"002001127000"}, {"002004002000"},{"000000000000"},{"000000000000"}}  //Pag 2 
+                                  {{"001002127000"}, {"002001127000"}, {"002004002000"},{"002002000000"},{"000000000000"}}  //Pag 2 
                                 };
 
   char Val_msg_btn2[3][5][13] = {
@@ -62,8 +68,8 @@ const int BtnRGBPin             = 7;
   int Pagina                    = 0;
   int RGBOn                     = 255;
   int RGBOff                    = 0;
-  int dt                        = 10;
-  int debug                     = LOW;
+  int dt                        = 5;
+  int debug                     = HIGH;
 
 // Variables for Midi Message
   int Midi_CH;
@@ -71,8 +77,6 @@ const int BtnRGBPin             = 7;
   int Midi_VaL_On;
   int Midi_VaL_Off;
   
-
-
 void setup() {
   //start serial connection
   //  Serial.begin(9600);
@@ -94,20 +98,27 @@ void setup() {
     digitalWrite(LedRGBPin[i],invertColor(RGBOff));
   }
 
-  //Enable RGB LED with Magenta Colour and turn off all other Leds.
-    SubRGBMagenta();
-    SubLedsdown();
-    
   if (debug == HIGH){
     Serial.print("Btn State ");
     Serial.print(digitalRead(BtnPins[0]));
   }
 
-  delay(5000);
+  for(int i2 = 0; i2 < numControls; i2++) {
+    for(int i3 = 0; i3 < 3; i3++) {
+      delay(50);   
+      digitalWrite(LedPin[i2], HIGH);
+      delay(50);
+      digitalWrite(LedPin[i2],LOW);
+    }
+  }
 
-  Serial.println("Footswitch Flavio Bicha - Done");
+  Serial.println("Footswitch Flavio Bicha");
+  //Enable RGB LED with Magenta Colour and turn off all other Leds.
+    delay(200);
+    SubRGBMagenta();
+    SubLedsdown();
   
-}
+}  // End Setup
 
 void loop() {
   for(int i = 0; i < numControls; i++) {
@@ -122,18 +133,51 @@ void loop() {
         }
         Midi_msg_prep(LedRGBState, i,1);
         Serial.println("Sending Control Change");
-        digitalWrite(LedPin[i], HIGH );
-        LedState[i] = 1;
-        SubLedsOff(i);
-        SubBtnOff(i);
+        Serial.print("State.: ");
+        Serial.println(LedState[0]);
+        switch (LedRGBState) {
+          case 0:  //* Magenta
+            SubLedBlink(i);
+            break;
+          case 1: //* Aqua  
+            LedState[i] = 1;
+            SubBtnOff(i);
+            digitalWrite(LedPin[i], HIGH );          
+            break;
+          case 2: //* Orange
+            if (i != 0 && LedState[0] == 1){
+                digitalWrite(LedPin[i], HIGH );
+                LedState[i] = 1;
+                SubBtnOff(i);
+            } else {
+              if (i == 0) {   
+                digitalWrite(LedPin[i], HIGH );
+                LedState[i] = 1;
+                SubBtnOff(i);
+              }
+            }
+            break;
+          default:
+            break;
+        }
+
+//        SubLedsOff(i, LedRGBState);
       } else {
         if (debug == HIGH){
           Serial.print("button off --> ");
           Serial.println(i);          
         }
-         Midi_msg_prep(LedRGBState, i,0);
+        Midi_msg_prep(LedRGBState, i,0);
         digitalWrite(LedPin[i], LOW);
         LedState[i] = 0;
+        if ( LedRGBState == 2 && i == 0) {
+          for(int i2 = 0; i2 < numControls; i2++) {
+            if ( i2 != i) {
+              digitalWrite(LedPin[i2],LOW);
+              LedState[i2] = 0;
+            }
+          }
+        }
       }
     }
     OldBtnState[i] = NewBtnState[i];
@@ -142,6 +186,7 @@ void loop() {
   delay(dt);
   
   NewBtnRGBState=digitalRead(BtnRGBPin);
+  
   if (OldBtnRGBState == 0 && NewBtnRGBState ==1){
 
     switch (LedRGBState) {
@@ -175,13 +220,15 @@ int invertColor(int color) {
 // Btn/Leds Functions
 // ==================
 
-  void SubLedsOff(int btnind) {
-    for(int i = 0; i < numControls; i++) {
-      if ( i != btnind) {
-        digitalWrite(LedPin[i],LOW);
-        LedState[i] = 0;
-      }    
-    }
+  void SubLedsOff(int btnind, int page) {
+    if (page == 0 ) {      
+      for(int i = 0; i < numControls; i++) {
+        if ( i != btnind) {
+          digitalWrite(LedPin[i],LOW);
+          LedState[i] = 0;
+        }
+      }
+    } 
   }
   
   void SubBtnOff(int btnind) {
@@ -222,6 +269,15 @@ int invertColor(int color) {
     }
   }
 
+  void SubLedBlink(int btnind) {
+      for(int i = 0; i < 4; i++) {
+        delay(50);   
+        digitalWrite(LedPin[btnind], HIGH);
+        delay(50);
+        digitalWrite(LedPin[btnind],LOW);
+    } 
+  }
+
 
 //* Midi Library Funcions 
 // ======================
@@ -239,6 +295,11 @@ int invertColor(int color) {
     midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
     MidiUSB.sendMIDI(event);
   }
+
+  void programChange(byte channel, byte program) {
+    midiEventPacket_t pc = {0x0C, 0xC0 | channel, program, 0};
+    MidiUSB.sendMIDI(pc);
+}  
 
 //* Sending Midi Message
 //  ==================== 
