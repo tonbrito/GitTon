@@ -1,4 +1,5 @@
 #include "MIDIUSB.h"
+#include <avr/pgmspace.h>
 
 //Midi messages per Button  [page] [Message] [Val_Message]
 //    Example:  - Two messages when we press Button 2 On Page 1
@@ -12,31 +13,31 @@
 //      - 3 bytes - CC Val Off
 //  
 
-const char Val_msg_btn1[3][5][13] PROGMEM = {
+const char Val_msg_btn1[3][5][13] = {
                                       {{"001069000000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001001127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
                                       {{"001002127000"}, {"002001127000"}, {"002004002000"},{"002002000000"},{"002003002000"}}  //Pag 2 
                                     };
 
-const char Val_msg_btn2[3][5][13] PROGMEM = {
+const char Val_msg_btn2[3][5][13] = {
                                       {{"001069001001"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001002127000"}, {"002001127000"}, {"002004002000"},{"002002000000"},{"002003002000"}}, //Pag 1
                                       {{"002002127000"}, {"002005002000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                     };
                                 
-const char Val_msg_btn3[3][5][13] PROGMEM = {
+const char Val_msg_btn3[3][5][13] = {
                                       {{"001069002002"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001003127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
                                       {{"002004004002"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                     };
   
-const char Val_msg_btn4[3][5][13] PROGMEM = {
+const char Val_msg_btn4[3][5][13] = {
                                       {{"001052127127"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001004127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
                                       {{"002003001000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                     };
   
-const char Val_msg_btn5[3][5][13] PROGMEM = {
+const char Val_msg_btn5[3][5][13] = {
                                       {{"001053127127"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001005127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
                                       {{"002003002000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
@@ -46,12 +47,13 @@ const char Val_msg_btn5[3][5][13] PROGMEM = {
 //Midi Auxiliar Array
   char Val_msg[5][13];
 
-// Buttons / Led Definitions
+// Buttons / Led Definitions / Table Size
 const int8_t numControls           = 5;
 const int8_t BtnPins[numControls]  = {2,3,4,5,6};
 const int8_t LedPin[numControls]   = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
 const int8_t LedRGBPin[3]          = {11,10,9};            // Red, Green, Blue
 const int8_t BtnRGBPin             = 7;   
+const int8_t sizeTab               = 65;
 
 // Variables
   int8_t LedState[3][5]            = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
@@ -65,8 +67,10 @@ const int8_t BtnRGBPin             = 7;
   int8_t RGBOff                    = 0;
   int8_t BtnTS                     = 3;
   int8_t BtnKOT                    = 4;
+  
   int8_t dt                        = 20;
-  int8_t debug                     = LOW;
+  int8_t debug                     = HIGH;
+  
 
 // Variables for Midi Message
   int Midi_CH;
@@ -144,7 +148,7 @@ void loop() {
               LedState[Page][i2] = 0;
             }
           }
-          LedState[Page-1][1] = 0;
+        LedState[Page-1][1] = 0;
         }
         if ( Page == 1 && i == 1) {
           for(int i3 = 0; i3 < numControls; i3++) {
@@ -411,31 +415,33 @@ void Midireceive(){
 //* Sending Midi Message
 //  ==================== 
 void Midi_msg_prep(int btn, int OffOn){
-
+  
   switch (btn) {
     case 0:    
-      memcpy(Val_msg, Val_msg_btn1[Page], sizeof(Val_msg_btn1[Page]));
+      memcpy(Val_msg, Val_msg_btn1[Page], sizeTab);
       break;
     case 1:
-      memcpy(Val_msg, Val_msg_btn2[Page], sizeof(Val_msg_btn2[Page]));
+      memcpy(Val_msg, Val_msg_btn2[Page], sizeTab);
       break;
     case 2:
-      memcpy(Val_msg, Val_msg_btn3[Page], sizeof(Val_msg_btn3[Page]));
+      memcpy(Val_msg, Val_msg_btn3[Page], sizeTab);
       break;
     case 3:
-      memcpy(Val_msg, Val_msg_btn4[Page], sizeof(Val_msg_btn4[Page]));
+      memcpy(Val_msg, Val_msg_btn4[Page], sizeTab);
       break;
     case 4:
-      memcpy(Val_msg, Val_msg_btn5[Page], sizeof(Val_msg_btn5[Page]));
+      memcpy(Val_msg, Val_msg_btn5[Page], sizeTab);
       break;
     default:
       break;
   }
 
+  Serial.println("Sending Midi Message");
+  
   for (int ind_msg = 0; ind_msg < 5; ind_msg++) {
     
     String Val_Str = Val_msg[ind_msg];
-    
+
     if (Val_Str.substring(0,3).toInt() != 0) {
       // Substring (var (pos_ini , pos_fin)
       Midi_CH       = ((Val_Str.substring(0,3).toInt())-1);
@@ -444,14 +450,15 @@ void Midi_msg_prep(int btn, int OffOn){
       Midi_VaL_Off = (Val_Str.substring(9,12).toInt());
       delay(10);
       if (OffOn == 1) {
-        Serial.print("Midi On ");
-        Serial.println(Midi_VaL_On);
+   //     Serial.print("Midi On ");
+   //     Serial.println(Midi_VaL_On);
         controlChange(Midi_CH, Midi_CC, Midi_VaL_On);
       } else {
-        Serial.print("Midi Off ");
-        Serial.println(Midi_VaL_Off);
+   //     Serial.print("Midi Off ");
+   //     Serial.println(Midi_VaL_Off);
         controlChange(Midi_CH, Midi_CC, Midi_VaL_Off);
       }
+      Serial.println(Val_Str);
       MidiUSB.flush();
       midisendmsg = 1;
     }
