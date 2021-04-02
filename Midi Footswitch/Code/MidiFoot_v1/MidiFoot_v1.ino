@@ -109,7 +109,7 @@ void setup() {
   //Enable RGB LED with Magenta Colour and turn off all other Leds.
   delay(200);
   SubRGBMagenta();
-  SubLedsdown();
+  SubResetPage_1();
 
   }  
 
@@ -124,12 +124,14 @@ void loop() {
     
     if (OldBtnState[Page][i] == 0 && NewBtnState[Page][i] ==1){
       if (LedState[Page][i] == 0) {
+        // Button On
         if (debug == HIGH){
           Serial.print("button on --> ");
           Serial.println(i);          
         }
         SubOn(i);
-      } else {
+      } else {   
+        // Button Off
         if (debug == HIGH){
           Serial.print("button off --> ");
           Serial.println(i);          
@@ -144,6 +146,7 @@ void loop() {
               LedState[Page][i2] = 0;
             }
           }
+          LedState[Page-1][0] = 0;
         }
       }
     }
@@ -173,6 +176,9 @@ int invertColor(int color) {
       case 0:  //* Magenta
         SubLedBlink(btnind);
         Midi_msg_prep(btnind,1);
+        if (btnind == 3 || btnind == 4){
+          SubResetPages();  
+        }
         break;
       case 1: //* Aqua  
         LedState[Page][btnind] = 1;
@@ -196,11 +202,16 @@ int invertColor(int color) {
             Midi_msg_prep(btnind,1);
         } else {
           if (btnind == 0) {   
+            // Activating Btn Page 2
             digitalWrite(LedPin[btnind], HIGH );
             LedState[Page][btnind] = 1;
             SubBtnOff(btnind);
+            // Activating KoT
             digitalWrite(LedPin[BtnKOT],HIGH);
             LedState[Page][BtnKOT] = 1;
+            //Activating Btn Page 1
+            LedState[Page-1][btnind] = 1;
+            
             Midi_msg_prep(btnind,1);
           }
         }
@@ -219,13 +230,20 @@ int invertColor(int color) {
     } 
   }
 
-  void SubLedsdown() {
+  void SubResetPage_1() {
     for(int i = 0; i < numControls; i++) {
       digitalWrite(LedPin[i],LOW);
       LedState[0][i] = 0;
     }
   }
 
+void SubResetPages() {
+    for(int ind_1 = 0; ind_1 < 3; ind_1++) {
+      for(int ind_2 = 0; ind_2 < numControls; ind_2++) {
+        LedState[ind_1][ind_2] = 0;
+      }
+    }
+  }
   void SubLoadBtnState() {
     for(int i = 0; i < numControls; i++) {
       Serial.print("Loading State.: ");
@@ -279,7 +297,7 @@ int invertColor(int color) {
         Page = 0;
         SubRGBLedsOff();
         SubRGBMagenta();
-        SubLedsdown();
+        SubResetPage_1();
         break;
       default:
         break;
