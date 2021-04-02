@@ -111,7 +111,6 @@ void setup() {
   SubRGBMagenta();
   SubLedsdown();
 
-  digitalWrite(A2,HIGH);
   }  
 
 void loop() {
