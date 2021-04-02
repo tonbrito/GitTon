@@ -15,33 +15,33 @@
   char Val_msg_btn1[3][5][13] = {
                                   {{"001069000000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                   {{"001001127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
-                                  {{"001002127000"}, {"002001127000"}, {"002004002000"},{"002002000000"},{"000000000000"}}  //Pag 2 
+                                  {{"001002127000"}, {"002001127000"}, {"002004002000"},{"002002000000"},{"002003002000"}}  //Pag 2 
                                 };
 
   char Val_msg_btn2[3][5][13] = {
                                   {{"001069001001"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                   {{"001002127000"}, {"002001127000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
-                                  {{"002003001000"}, {"002004002000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
+                                  {{"002002127000"}, {"002005002000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                 };
                                 
   char Val_msg_btn3[3][5][13] = {
                                   {{"001069002002"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                   {{"001003127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
-                                  {{"002003002000"}, {"002004002000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
+                                  {{"002004004002"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                 };
   
   
   char Val_msg_btn4[3][5][13] = {
                                   {{"001052127127"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                   {{"001004127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
-                                  {{"002002127000"}, {"002005002000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
+                                  {{"002003001000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                 };
   
   
   char Val_msg_btn5[3][5][13] = {
                                   {{"001053127127"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                   {{"001005127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
-                                  {{"002004004002"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
+                                  {{"002003002000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                 };
                                 
 
@@ -50,7 +50,7 @@
 
 // Buttons / Led Definitions
 const int numControls           = 5;
-const int BtnPins[numControls]  = {2,3,4,5,8};
+const int BtnPins[numControls]  = {2,3,4,5,6};
 const int LedPin[numControls]   = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
 const int LedRGBPin[3]          = {11,10,9};            // Red, Green, Blue
 const int BtnRGBPin             = 7;   
@@ -65,6 +65,8 @@ const int BtnRGBPin             = 7;
   int NewBtnRGBState            = 0;
   int RGBOn                     = 255;
   int RGBOff                    = 0;
+  int BtnTS                     = 3;
+  int BtnKOT                    = 4;
   int dt                        = 20;
   int debug                     = LOW;
 
@@ -94,7 +96,7 @@ void setup() {
     pinMode(LedRGBPin[i], OUTPUT);
     digitalWrite(LedRGBPin[i],invertColor(RGBOff));
   }
-
+    
   for(int i2 = 0; i2 < numControls; i2++) {
     for(int i3 = 0; i3 < 3; i3++) {
       delay(50);   
@@ -108,7 +110,8 @@ void setup() {
   delay(200);
   SubRGBMagenta();
   SubLedsdown();
-  
+
+  digitalWrite(A2,HIGH);
   }  
 
 void loop() {
@@ -126,7 +129,6 @@ void loop() {
           Serial.print("button on --> ");
           Serial.println(i);          
         }
-        Midi_msg_prep(i,1);
         SubOn(i);
       } else {
         if (debug == HIGH){
@@ -168,28 +170,39 @@ int invertColor(int color) {
 // ==================
 
   void SubOn(int btnind) {
-    Serial.println("Sending Control Change");
-    Serial.print("State.: ");
-    Serial.println(LedState[2][0]);
     switch (Page) {
       case 0:  //* Magenta
         SubLedBlink(btnind);
+        Midi_msg_prep(btnind,1);
         break;
       case 1: //* Aqua  
         LedState[Page][btnind] = 1;
         SubBtnOff(btnind);
         digitalWrite(LedPin[btnind], HIGH );          
+        Midi_msg_prep(btnind,1);
         break;
       case 2: //* Orange
         if (btnind != 0 && LedState[Page][0] == 1){
+            if (btnind == BtnTS) {
+              digitalWrite(LedPin[BtnKOT],LOW);
+              LedState[Page][BtnKOT] = 0;
+            }
+            if (btnind == BtnKOT) {
+              digitalWrite(LedPin[BtnTS],LOW);
+              LedState[Page][BtnTS] = 0;
+            }
             digitalWrite(LedPin[btnind], HIGH );
             LedState[Page][btnind] = 1;
             SubBtnOff(btnind);
+            Midi_msg_prep(btnind,1);
         } else {
           if (btnind == 0) {   
             digitalWrite(LedPin[btnind], HIGH );
             LedState[Page][btnind] = 1;
             SubBtnOff(btnind);
+            digitalWrite(LedPin[BtnKOT],HIGH);
+            LedState[Page][BtnKOT] = 1;
+            Midi_msg_prep(btnind,1);
           }
         }
         break;
@@ -332,42 +345,39 @@ int invertColor(int color) {
         rx = MidiUSB.read();
         if (midisendmsg == 0) {
           if (rx.header != 0) {
-            Serial.print("Received: ");
-            Serial.print(rx.header, HEX);
-            Serial.print("-");
-            Serial.print(rx.byte1, HEX);
-            Serial.print("-");
-            Serial.print(rx.byte2);
-            Serial.print("-");
-            Serial.println(rx.byte3);
             if (rx.byte1 == 0xB0) {
               int val_input1;
-              int val_input2;
-              int val_input3;
               memcpy(val_input1, rx.byte1, sizeof(rx.byte1));
               Serial.print("### Receiving on Channel..: ");
-              Serial.println(val_input1);
-              val_input2 = rx.byte2;
-              Serial.print("### CC Message..: ");
-              Serial.println(val_input2);
-              val_input3 = rx.byte3;
-              Serial.print("### CC Value..: ");
-              Serial.println(val_input3);
+              Serial.print(val_input1);
+              Serial.print("  ### CC Message..: ");
+              Serial.print(rx.byte2);
+              Serial.print("  ### CC Value..: ");
+              Serial.println(rx.byte3);
     
-              int ind_btn = val_input2 -1;
+              int ind_btn = rx.byte2 -1;
               
-              if (val_input3 == 127) {
+              if (rx.byte3 == 127) {
                 LedState[1][ind_btn] = 1;
-                if (Page != 0) {
+                if (Page == 1) {
                   digitalWrite(LedPin[ind_btn],HIGH);
                 }
               } else {
                 LedState[1][ind_btn] = 0;
-                if (Page != 0) {
+                if (Page == 1) {
                   digitalWrite(LedPin[ind_btn],LOW);
                 }  
                 
               }      
+            } else {
+                Serial.print("Received: ");
+                Serial.print(rx.header, HEX);
+                Serial.print("-");
+                Serial.print(rx.byte1, HEX);
+                Serial.print("-");
+                Serial.print(rx.byte2, HEX);
+                Serial.print("-");
+                Serial.println(rx.byte3, HEX);
             }
           }
         } 
