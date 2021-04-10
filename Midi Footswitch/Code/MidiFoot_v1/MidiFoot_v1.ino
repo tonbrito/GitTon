@@ -1,5 +1,4 @@
 #include "MIDIUSB.h"
-#include <avr/pgmspace.h>
 
 //Midi messages per Button  [page] [Message] [Val_Message]
 //    Example:  - Two messages when we press Button 2 On Page 1
@@ -34,13 +33,13 @@ const char Val_msg_btn3[3][5][13] = {
 const char Val_msg_btn4[3][5][13] = {
                                       {{"001052127127"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001004127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
-                                      {{"002003001000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
+                                      {{"002003001003"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                     };
   
 const char Val_msg_btn5[3][5][13] = {
                                       {{"001053127127"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001005127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
-                                      {{"002003002000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
+                                      {{"002003002004"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                     };
                                 
 
@@ -49,27 +48,27 @@ const char Val_msg_btn5[3][5][13] = {
 
 // Buttons / Led Definitions / Table Size
 const int8_t numControls           = 5;
-const int8_t BtnPins[numControls]  = {2,3,4,5,6};
+const int8_t BtnPins[numControls]  = {2,3,4,5,7};
 const int8_t LedPin[numControls]   = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
 const int8_t LedRGBPin[3]          = {11,10,9};            // Red, Green, Blue
-const int8_t BtnRGBPin             = 7;   
+const int8_t BtnRGBPin             = 12;   
 const int8_t sizeTab               = 65;
 
 // Variables
   int8_t LedState[3][5]            = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
   int8_t OldBtnState[3][5]         = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
   int8_t NewBtnState[3][5]         = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+  int8_t GBclip3                   = 1;  
+  int8_t GBclip4                   = 1;  
   int8_t Page                      = 0;
   int8_t midisendmsg               = 1;
   int8_t OldBtnRGBState            = 1;
   int8_t NewBtnRGBState            = 0;
-  int    RGBOn                     = 255;
-  int8_t RGBOff                    = 0;
   int8_t BtnTS                     = 3;
   int8_t BtnKOT                    = 4;
-  
   int8_t dt                        = 20;
   int8_t debug                     = HIGH;
+  
   
 
 // Variables for Midi Message
@@ -96,7 +95,7 @@ void setup() {
   //configure RGB Led as ouput
   for (int i = 0; i < 3; i++) {
     pinMode(LedRGBPin[i], OUTPUT);
-    digitalWrite(LedRGBPin[i],invertColor(RGBOff));
+    digitalWrite(LedRGBPin[i],invertColor(0));
   }
     
   for(int i2 = 0; i2 < numControls; i2++) {
@@ -123,10 +122,10 @@ void loop() {
   Midireceive();
   
   for(int i = 0; i < numControls; i++) {
-  
+
     NewBtnState[Page][i]=digitalRead(BtnPins[i]);
     NewBtnRGBState=digitalRead(BtnRGBPin);
-    
+
     if (OldBtnState[Page][i] == 0 && NewBtnState[Page][i] ==1){
       if (LedState[Page][i] == 0) {
         // Button On
@@ -141,35 +140,15 @@ void loop() {
           Serial.print("button off --> ");
           Serial.println(i);          
         }
-        Midi_msg_prep(i,0);
-        digitalWrite(LedPin[i], LOW);
-        LedState[Page][i] = 0;
-
-        if (i == 1) {
-          if ( Page == 1) {
-            for(int i3 = 0; i3 < numControls; i3++) {
-              LedState[Page+1][i3] = 0;
-            }
-          } else {
-            if ( Page == 2) {
-              for(int i2 = 0; i2 < numControls; i2++) {
-                if ( i2 != i) {
-                  digitalWrite(LedPin[i2],LOW);
-                  LedState[Page][i2] = 0;
-                }
-              }
-            //  LedState[Page-1][1] = 0;
-            }
-          }
-        }
-      }
+        SubOff(i);
+      } // Else
+    }
+    
+    if (OldBtnRGBState == 0 && NewBtnRGBState == 1){
+      SubsetRGB();
     }
     
     OldBtnState[Page][i] = NewBtnState[Page][i];
-
-    if (OldBtnRGBState == 0 && NewBtnRGBState ==1){
-      SubsetRGB();
-    }
     
     OldBtnRGBState = NewBtnRGBState;
   }
@@ -208,6 +187,7 @@ void SubOn(int btnind) {
         LedState[2][4] = 1;
       }
       Midi_msg_prep(btnind,1);
+      
       break;
     case 2: //* Orange
       if (btnind != 1 && LedState[Page][1] == 1){
@@ -216,6 +196,7 @@ void SubOn(int btnind) {
             LedState[Page][BtnKOT] = 0;
           }
           if (btnind == BtnKOT) {
+            Serial.println("Ligando BtnKOT");
             digitalWrite(LedPin[BtnTS],LOW);
             LedState[Page][BtnTS] = 0;
           }
@@ -239,6 +220,59 @@ void SubOn(int btnind) {
         }
       }
       break;
+    default:
+      break;
+  }
+}
+
+void SubOff(int btnind) {
+  switch (Page) {
+    case 0:  //* Magenta
+//      digitalWrite(LedPin[btnind], HIGH );
+      LedState[Page][btnind] = 1;
+      break;      
+    case 1:  //* Magenta
+      if (btnind == 1) {
+        for(int i3 = 0; i3 < numControls; i3++) {
+          LedState[Page+1][i3] = 0;
+        }
+      }
+      Midi_msg_prep(btnind,0);
+      digitalWrite(LedPin[btnind], LOW);
+      LedState[Page][btnind] = 0;
+      break;
+    case 2:  //* Magenta
+      if (btnind == 1) {
+        for(int i2 = 0; i2 < numControls; i2++) {
+          if ( i2 != btnind) {
+            digitalWrite(LedPin[i2],LOW);
+            LedState[Page][i2] = 0;
+          }
+        }
+      } 
+      if (btnind == 3 || btnind == 4){
+
+        if (btnind == 3) {
+          if (GBclip3 == 0) {
+            GBclip3 = 1;
+          } else {
+            GBclip3 = 0;
+          }
+        } else {
+          if (GBclip4 == 0) {
+            GBclip4 = 1;
+          } else {
+            GBclip4 = 0;
+          }  
+        }
+        LedState[Page][btnind] = 0;
+        Midi_msg_prep(btnind,0);
+      } else {
+        Midi_msg_prep(btnind,0);
+        digitalWrite(LedPin[btnind], LOW);
+        LedState[Page][btnind] = 0;
+      }
+      break;   
     default:
       break;
   }
@@ -329,6 +363,7 @@ void SubSnap_1() {
 // =========================
 
 void SubsetRGB() {
+  Serial.println("Dentro SubsetRGB");
   switch (Page) {
     case 0:  //* Magenta
       Page = 1;
@@ -356,7 +391,7 @@ void SubsetRGB() {
 
 void SubRGBLedsOff() {
   for(int i = 0; i < 3; i++) {
-    digitalWrite(LedRGBPin[i],invertColor(RGBOff)); 
+    digitalWrite(LedRGBPin[i],invertColor(0)); 
   }
 }
 
@@ -485,7 +520,6 @@ void SubLoadGB(int CC_midi, int CC_msg){
           LedState[1][1] = 1;
           LedState[2][1] = 1;
           if (Page != 0) {
-            Serial.println("tEST");
             digitalWrite(LedPin[1],HIGH);
           }
       } else {
@@ -559,6 +593,10 @@ void SubLoadGB(int CC_midi, int CC_msg){
 //* Sending Midi Message
 //  ==================== 
 void Midi_msg_prep(int btn, int OffOn){
+
+  Serial.println("Sending Midi Message");
+  Serial.println(GBclip3);
+  Serial.println(GBclip4);
   
   switch (btn) {
     case 0:    
@@ -572,18 +610,21 @@ void Midi_msg_prep(int btn, int OffOn){
       break;
     case 3:
       memcpy(Val_msg, Val_msg_btn4[Page], sizeTab);
+      if (GBclip3 == 0) {
+        OffOn = 0;  
+      }
       break;
     case 4:
       memcpy(Val_msg, Val_msg_btn5[Page], sizeTab);
+      if (GBclip4 == 0) {
+        OffOn = 0;  
+      }
       break;
     default:
       break;
   }
-
-  Serial.println("Sending Midi Message");
   
   for (int ind_msg = 0; ind_msg < 5; ind_msg++) {
-    
     String Val_Str = Val_msg[ind_msg];
 
     if (Val_Str.substring(0,3).toInt() != 0) {
@@ -602,6 +643,8 @@ void Midi_msg_prep(int btn, int OffOn){
       Serial.println(Val_Str);
       MidiUSB.flush();
       midisendmsg = 1;
+      } else {
+        break;  
     }
   }
 }    
