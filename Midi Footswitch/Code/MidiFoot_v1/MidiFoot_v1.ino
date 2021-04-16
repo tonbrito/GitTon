@@ -31,51 +31,50 @@ const char Val_msg_btn3[3][5][13] = {
                                     };
   
 const char Val_msg_btn4[3][5][13] = {
-                                      {{"001052127127"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
+                                      {{"001072063063"}, {"001005127000"}, {"001069000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001004127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
                                       {{"002003001003"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                     };
   
 const char Val_msg_btn5[3][5][13] = {
-                                      {{"001053127127"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 0
+                                      {{"001072127127"}, {"001005127000"}, {"001069000000"},{"000000000000"},{"000000000000"}}, //Pag 0
                                       {{"001005127000"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}, //Pag 1
                                       {{"002003002004"}, {"000000000000"}, {"000000000000"},{"000000000000"},{"000000000000"}}  //Pag 2 
                                     };
                                 
-
-//Midi Auxiliar Array
-  char Val_msg[5][13];
-
 // Buttons / Led Definitions / Table Size
-const int8_t numControls           = 5;
-const int8_t BtnPins[numControls]  = {2,3,4,5,7};
-const int8_t LedPin[numControls]   = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
-const int8_t LedRGBPin[3]          = {11,10,9};            // Red, Green, Blue
-const int8_t BtnRGBPin             = 12;   
-const int8_t sizeTab               = 65;
+const int8_t numControls            = 5;
+const int8_t BtnPins[numControls]   = {2,3,4,5,7};
+const int8_t LedPin[numControls]    = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
+const int8_t LedRGBPin[3]           = {11,10,9};            // Red, Green, Blue
+const int8_t BtnRGBPin              = 12;   
+const int8_t sizeTab                = 65;
 
 // Variables
-  int8_t LedState[3][5]            = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
-  int8_t OldBtnState[3][5]         = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
-  int8_t NewBtnState[3][5]         = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
-  int8_t GBclip3                   = 1;  
-  int8_t GBclip4                   = 1;  
-  int8_t Page                      = 0;
-  int8_t midisendmsg               = 1;
-  int8_t OldBtnRGBState            = 1;
-  int8_t NewBtnRGBState            = 0;
-  int8_t BtnTS                     = 3;
-  int8_t BtnKOT                    = 4;
-  int8_t dt                        = 20;
-  int8_t debug                     = HIGH;
-  
-  
+int8_t LedState[3][5]               = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+int8_t OldBtnState[3][5]            = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
+int8_t NewBtnState[3][5]            = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+int8_t GBclip[2]                    = {1,1};
+int8_t LastBtnDrv                   = 4;
+int8_t MidiOnOff                    = 0;
+int8_t Page                         = 0;
+int8_t midisendmsg                  = 1;
+int8_t OldBtnRGBState               = 1;
+int8_t NewBtnRGBState               = 0;
+int8_t BtnTS                        = 3;
+int8_t BtnKOT                       = 4;
+int8_t dt                           = 20;
+int8_t dmidi                        = 0;
+int8_t debug                        = HIGH;
+
+//Midi Auxiliar Array
+char Val_msg[5][13];
 
 // Variables for Midi Message
-  int Midi_CH;
-  int Midi_CC;
-  int Midi_VaL_On;
-  int Midi_VaL_Off;
+int Midi_CH;
+int Midi_CC;
+int Midi_VaL_On;
+int Midi_VaL_Off;
   
 void setup() {
   //start serial connection
@@ -107,7 +106,7 @@ void setup() {
     }
   }
 
-  delay(10000);
+  delay(5000);
 
   //Enable RGB LED with Magenta Colour and turn off all other Leds.
   delay(200);
@@ -130,15 +129,15 @@ void loop() {
       if (LedState[Page][i] == 0) {
         // Button On
         if (debug == HIGH){
-          Serial.print("button on --> ");
-          Serial.println(i);          
+//          Serial.print("button on --> ");
+//          Serial.println(i);          
         }
         SubOn(i);
       } else {   
         // Button Off
         if (debug == HIGH){
-          Serial.print("button off --> ");
-          Serial.println(i);          
+//          Serial.print("button off --> ");
+//          Serial.println(i);          
         }
         SubOff(i);
       } // Else
@@ -169,7 +168,8 @@ void SubOn(int btnind) {
       Midi_msg_prep(btnind,1);
       if (btnind == 3 || btnind == 4){
         SubLedBlink(btnind);
-        SubResetPages();  
+        SubResetPages();
+        SubLoadBtnState();  
         SubSnap_1();
       } else {
         SubBtnOff(btnind);
@@ -193,17 +193,33 @@ void SubOn(int btnind) {
       if (btnind != 1 && LedState[Page][1] == 1){
           if (btnind == BtnTS) {
             digitalWrite(LedPin[BtnKOT],LOW);
+            MidiOnOff = GBclip[0];
             LedState[Page][BtnKOT] = 0;
+            if (LastBtnDrv == 3) {
+              SubDrvBtn(btnind);
+            } else {
+              LastBtnDrv = 3;
+            }
           }
           if (btnind == BtnKOT) {
-            Serial.println("Ligando BtnKOT");
             digitalWrite(LedPin[BtnTS],LOW);
+            MidiOnOff = GBclip[1];
             LedState[Page][BtnTS] = 0;
+            if (LastBtnDrv == 4) {
+              SubDrvBtn(btnind);
+            }else {
+              LastBtnDrv = 4;
+            }
           }
           digitalWrite(LedPin[btnind], HIGH );
           LedState[Page][btnind] = 1;
           SubBtnOff(btnind);
-          Midi_msg_prep(btnind,1);
+          if (btnind == 3 || btnind == 4){
+            Midi_msg_prep(btnind,MidiOnOff);
+          } else {
+            Midi_msg_prep(btnind,1);
+          }
+            
       } else {
         if (btnind == 1) {   
           // Activating Btn Page 2
@@ -211,6 +227,7 @@ void SubOn(int btnind) {
           LedState[Page][btnind] = 1;
           SubBtnOff(btnind);
           // Activating KoT
+          LastBtnDrv = 4;
           digitalWrite(LedPin[BtnKOT],HIGH);
           LedState[Page][BtnKOT] = 1;
           //Activating Btn Page 1
@@ -226,6 +243,7 @@ void SubOn(int btnind) {
 }
 
 void SubOff(int btnind) {
+
   switch (Page) {
     case 0:  //* Magenta
 //      digitalWrite(LedPin[btnind], HIGH );
@@ -251,22 +269,25 @@ void SubOff(int btnind) {
         }
       } 
       if (btnind == 3 || btnind == 4){
-
+        MidiOnOff = 0;
         if (btnind == 3) {
-          if (GBclip3 == 0) {
-            GBclip3 = 1;
-          } else {
-            GBclip3 = 0;
-          }
+            MidiOnOff = GBclip[0];
+            if (LastBtnDrv == btnind) {
+              SubDrvBtn(btnind);
+            } else {
+              LastBtnDrv = 3;
+            }
         } else {
-          if (GBclip4 == 0) {
-            GBclip4 = 1;
-          } else {
-            GBclip4 = 0;
-          }  
+            MidiOnOff = GBclip[1];
+            if (LastBtnDrv == btnind) {
+              SubDrvBtn(btnind);
+            } else {
+              LastBtnDrv = 4;
+            }
         }
+
         LedState[Page][btnind] = 0;
-        Midi_msg_prep(btnind,0);
+        Midi_msg_prep(btnind,MidiOnOff);
       } else {
         Midi_msg_prep(btnind,0);
         digitalWrite(LedPin[btnind], LOW);
@@ -304,8 +325,6 @@ void SubResetPages() {
 
 void SubLoadBtnState() {
   for(int i = 0; i < numControls; i++) {
-    Serial.print("Loading State.: ");
-    Serial.println(LedState[Page][i]);
     if ( LedState[Page][i] == 1) {
       digitalWrite(LedPin[i],HIGH);
     } else {
@@ -337,12 +356,12 @@ void SubSnap_1() {
   int Page_Old = Page;
   
   Page = 0;
-  Midi_msg_prep(0,1);  // Snapshot 1
+//  Midi_msg_prep(0,1);  // Snapshot 1
   LedState[0][0] = 1;
   SubBtnOff(0);
 
   Page = 1;
-  Midi_msg_prep(4,1);  // Ep-Booster
+//  Midi_msg_prep(4,1);  // Ep-Booster
   LedState[1][4] = 1;
 
   Page = Page_Old;
@@ -354,7 +373,25 @@ void SubSnap_1() {
       digitalWrite(LedPin[4],HIGH);
     }
   }
+}
 
+
+void SubDrvBtn(int btn) {
+  if (btn == 4) {
+    if (GBclip[1] == 0) {
+      GBclip[1] = 1;
+    } else {
+      GBclip[1] = 0;
+    }
+  MidiOnOff = GBclip[1];
+  } else {
+    if (GBclip[0] == 0) {
+      GBclip[0] = 1;
+    } else {
+      GBclip[0] = 0;
+    }
+  MidiOnOff = GBclip[0];
+  }
 }
 
 
@@ -363,7 +400,6 @@ void SubSnap_1() {
 // =========================
 
 void SubsetRGB() {
-  Serial.println("Dentro SubsetRGB");
   switch (Page) {
     case 0:  //* Magenta
       Page = 1;
@@ -451,13 +487,13 @@ void Midireceive(){
           if ((rx.byte1 == 0xB0) && (rx.byte2 != 0)) {    
             int val_input1;
             memcpy(val_input1, rx.byte1, sizeof(rx.byte1));
-            Serial.print("### Receiving on Channel..: ");
+/*            Serial.print("### Receiving on Channel..: ");
             Serial.print(val_input1);
             Serial.print("  ### CC Message..: ");
             Serial.print(rx.byte2);
             Serial.print("  ### CC Value..: ");
             Serial.println(rx.byte3);
-  
+*/  
             int ind_btn = rx.byte2 -1;
             
             if (rx.byte3 == 127) {
@@ -474,21 +510,24 @@ void Midireceive(){
           } else {
             // Program change
             if (rx.byte1 == 0xC0) {
-              Serial.print("Program Changed..:");
-              Serial.println(rx.byte2);
+//              Serial.print("Program Changed..:");
+//              Serial.println(rx.byte2);
               SubResetPages();  
               SubSnap_1();
             } else {
               if ((rx.byte1 == 0xB1) && (rx.byte2 != 0)) { 
-                int val_input1 = (int)rx.byte1;
+                int val_input1;
                 memcpy(val_input1, rx.byte1, sizeof(rx.byte1));
-                Serial.print("### Receiving on Channel..: 01 ");
+/*                Serial.print("### Receiving on Channel..: 01 ");
                 Serial.print("  ### CC Message..: ");
                 Serial.print(rx.byte2);
                 Serial.print("  ### CC Value..: ");
                 Serial.println(rx.byte3);
+*/
                 SubLoadGB(rx.byte2, rx.byte3);
-              } else {
+              } 
+              
+/*              else {
                 Serial.print("Received: ");
                 Serial.print(rx.header, HEX);
                 Serial.print("-");
@@ -498,6 +537,7 @@ void Midireceive(){
                 Serial.print("-");
                 Serial.println(rx.byte3, HEX);
               }
+              */
             }
           }
         }
@@ -572,14 +612,14 @@ void SubLoadGB(int CC_midi, int CC_msg){
           LedState[1][2] = 0;
           LedState[2][2] = 0;
           if (Page == 2) {
-            digitalWrite(LedPin[2],HIGH);
+            digitalWrite(LedPin[2],LOW);
           }
       } else {
         if (CC_msg == 4) {
           LedState[1][2] = 1;
           LedState[2][2] = 1;
           if (Page == 2) {
-            digitalWrite(LedPin[2],LOW);
+            digitalWrite(LedPin[2],HIGH);
           }
         }
       }
@@ -594,10 +634,10 @@ void SubLoadGB(int CC_midi, int CC_msg){
 //  ==================== 
 void Midi_msg_prep(int btn, int OffOn){
 
-  Serial.println("Sending Midi Message");
-  Serial.println(GBclip3);
-  Serial.println(GBclip4);
-  
+//  Serial.println("Sending Midi Message");
+
+  dmidi = 5;
+ 
   switch (btn) {
     case 0:    
       memcpy(Val_msg, Val_msg_btn1[Page], sizeTab);
@@ -610,14 +650,14 @@ void Midi_msg_prep(int btn, int OffOn){
       break;
     case 3:
       memcpy(Val_msg, Val_msg_btn4[Page], sizeTab);
-      if (GBclip3 == 0) {
-        OffOn = 0;  
+      if (Page == 0) {
+        dmidi = 100;
       }
       break;
     case 4:
       memcpy(Val_msg, Val_msg_btn5[Page], sizeTab);
-      if (GBclip4 == 0) {
-        OffOn = 0;  
+      if (Page == 0) {
+        dmidi = 100;
       }
       break;
     default:
@@ -633,14 +673,14 @@ void Midi_msg_prep(int btn, int OffOn){
       Midi_CC      =  (Val_Str.substring(3,6).toInt());
       Midi_VaL_On  =  (Val_Str.substring(6,9).toInt());
       Midi_VaL_Off =  (Val_Str.substring(9,12).toInt());
-      delay(5);
+      delay(dmidi);
       if (OffOn == 1) {
         controlChange(Midi_CH, Midi_CC, Midi_VaL_On);
       } else {
         controlChange(Midi_CH, Midi_CC, Midi_VaL_Off);
       }
-      Serial.print("Midi_Tab_String -> ");
-      Serial.println(Val_Str);
+//      Serial.print("Midi_Tab_String -> ");
+//      Serial.println(Val_Str);
       MidiUSB.flush();
       midisendmsg = 1;
       } else {
