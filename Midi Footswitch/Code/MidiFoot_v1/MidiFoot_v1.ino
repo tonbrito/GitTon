@@ -1,7 +1,6 @@
 #include "MIDIUSB.h"
 #include <MIDI.h>
 MIDI_CREATE_DEFAULT_INSTANCE();
-#define LED 13    // Arduino Board LED is on Pin 13
 
 //Midi messages per Button  [page] [Message] [Val_Message]
 //    Example:  - Two messages when we press Button 2 On Page 1
@@ -84,20 +83,10 @@ int Midi_VaL_Off;
 void setup() {
   //start serial connection
   // Serial.begin(9600);
-   Serial.begin(115200);
+  Serial.begin(115200);
+  MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library.
+  MIDI.turnThruOff();
 
-//  Test Ini
-   // MIDI.begin(MIDI_CHANNEL_OFF);
-   MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library.
-
-  MIDI.setHandleNoteOn(MyHandleNoteOn); // This is important!! This command
-  // tells the Midi Library which function you want to call when a NOTE ON command
-  // is received. In this case it's "MyHandleNoteOn".
-  MIDI.setHandleNoteOff(MyHandleNoteOff); // This command tells the Midi Library 
-  // to call "MyHandleNoteOff" when a NOTE OFF command is received.
-   pinMode (LED, OUTPUT);
-//  Test Fim   
-   
   //configure Switches [1-5] as Input and enable the internal pull-up resistor
   //configure Leds [1-5] as ouput 
   for (int i = 0; i < numControls; i++) {
@@ -172,26 +161,9 @@ void loop() {
   delay(dt);
 }
 
-
 int invertColor(int color) {
   return (color * -1) +255;
 }
-
-
-// MyHandleNoteON is the function that will be called by the Midi Library
-// when a MIDI NOTE ON message is received.
-// It will be passed bytes for Channel, Pitch, and Velocity
-void MyHandleNoteOn(byte channel, byte pitch, byte velocity) { 
-  digitalWrite(LED,HIGH);  //Turn LED on
-}
-
-// MyHandleNoteOFF is the function that will be called by the Midi Library
-// when a MIDI NOTE OFF message is received.
-// * A NOTE ON message with Velocity = 0 will be treated as a NOTE OFF message *
-// It will be passed bytes for Channel, Pitch, and Velocity
-void MyHandleNoteOff(byte channel, byte pitch, byte velocity) { 
-  digitalWrite(LED,LOW);  //Turn LED off
-
 
 // Btn/Leds Functions
 // ==================
