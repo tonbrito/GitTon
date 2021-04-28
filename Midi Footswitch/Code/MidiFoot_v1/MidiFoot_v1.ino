@@ -642,7 +642,7 @@ void Midi_msg_prep(int btn, int OffOn){
 
 //  Serial.println("Sending Midi Message");
 
-  dmidi = 5;
+  dmidi = 1;
  
   switch (btn) {
     case 0:    
@@ -657,13 +657,13 @@ void Midi_msg_prep(int btn, int OffOn){
     case 3:
       memcpy(Val_msg, Val_msg_btn4[Page], sizeTab);
       if (Page == 0) {
-        dmidi = 100;
+        dmidi = 5;
       }
       break;
     case 4:
       memcpy(Val_msg, Val_msg_btn5[Page], sizeTab);
       if (Page == 0) {
-        dmidi = 100;
+        dmidi = 5;
       }
       break;
     default:
