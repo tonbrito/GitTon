@@ -1,4 +1,7 @@
 #include "MIDIUSB.h"
+#include <MIDI.h>
+MIDI_CREATE_DEFAULT_INSTANCE();
+#define LED 13    // Arduino Board LED is on Pin 13
 
 //Midi messages per Button  [page] [Message] [Val_Message]
 //    Example:  - Two messages when we press Button 2 On Page 1
@@ -50,6 +53,7 @@ const int8_t LedRGBPin[3]           = {11,10,9};            // Red, Green, Blue
 const int8_t BtnRGBPin              = 12;   
 const int8_t sizeTab                = 65;
 
+
 // Variables
 int8_t LedState[3][5]               = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 int8_t OldBtnState[3][5]            = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
@@ -75,12 +79,25 @@ int Midi_CH;
 int Midi_CC;
 int Midi_VaL_On;
 int Midi_VaL_Off;
-  
+
+
 void setup() {
   //start serial connection
-  //  Serial.begin(9600);
-  Serial.begin(115200);
+  // Serial.begin(9600);
+   Serial.begin(115200);
 
+//  Test Ini
+   // MIDI.begin(MIDI_CHANNEL_OFF);
+   MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library.
+
+  MIDI.setHandleNoteOn(MyHandleNoteOn); // This is important!! This command
+  // tells the Midi Library which function you want to call when a NOTE ON command
+  // is received. In this case it's "MyHandleNoteOn".
+  MIDI.setHandleNoteOff(MyHandleNoteOff); // This command tells the Midi Library 
+  // to call "MyHandleNoteOff" when a NOTE OFF command is received.
+   pinMode (LED, OUTPUT);
+//  Test Fim   
+   
   //configure Switches [1-5] as Input and enable the internal pull-up resistor
   //configure Leds [1-5] as ouput 
   for (int i = 0; i < numControls; i++) {
@@ -119,6 +136,7 @@ void setup() {
 void loop() {
   
   Midireceive();
+  MIDI.read();
   
   for(int i = 0; i < numControls; i++) {
 
@@ -158,6 +176,22 @@ void loop() {
 int invertColor(int color) {
   return (color * -1) +255;
 }
+
+
+// MyHandleNoteON is the function that will be called by the Midi Library
+// when a MIDI NOTE ON message is received.
+// It will be passed bytes for Channel, Pitch, and Velocity
+void MyHandleNoteOn(byte channel, byte pitch, byte velocity) { 
+  digitalWrite(LED,HIGH);  //Turn LED on
+}
+
+// MyHandleNoteOFF is the function that will be called by the Midi Library
+// when a MIDI NOTE OFF message is received.
+// * A NOTE ON message with Velocity = 0 will be treated as a NOTE OFF message *
+// It will be passed bytes for Channel, Pitch, and Velocity
+void MyHandleNoteOff(byte channel, byte pitch, byte velocity) { 
+  digitalWrite(LED,LOW);  //Turn LED off
+
 
 // Btn/Leds Functions
 // ==================
@@ -676,11 +710,17 @@ void Midi_msg_prep(int btn, int OffOn){
       delay(dmidi);
       if (OffOn == 1) {
         controlChange(Midi_CH, Midi_CC, Midi_VaL_On);
+        MIDI.sendControlChange(Midi_CC, Midi_VaL_On, Midi_CH+1);
+        Serial.println(Midi_CC);
+        Serial.println(Midi_VaL_On);
+        Serial.println(Midi_CH);
       } else {
         controlChange(Midi_CH, Midi_CC, Midi_VaL_Off);
+        MIDI.sendControlChange(Midi_CC, Midi_VaL_Off, Midi_CH+1);
       }
 //      Serial.print("Midi_Tab_String -> ");
 //      Serial.println(Val_Str);
+      
       MidiUSB.flush();
       midisendmsg = 1;
       } else {
