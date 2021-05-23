@@ -45,30 +45,32 @@ const char Val_msg_btn5[3][5][13] = {
                                     };
                                 
 // Buttons / Led Definitions / Table Size
-const int8_t numControls            = 5;
-const int8_t BtnPins[numControls]   = {2,3,4,5,7};
-const int8_t LedPin[numControls]    = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
-const int8_t LedRGBPin[3]           = {11,10,9};            // Red, Green, Blue
-const int8_t BtnRGBPin              = 12;   
-const int8_t sizeTab                = 65;
+const int8_t  numControls               = 5;
+const int8_t  BtnPins[numControls]      = {2,3,4,5,7};
+const int8_t  LedPin[numControls]       = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
+const int8_t  LedRGBPin[3]              = {11,10,9};            // Red, Green, Blue
+const int8_t  BtnRGBPin                 = 12;   
+const int8_t  sizeTab                   = 65;
 
 
 // Variables
-int8_t LedState[3][5]               = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
-int8_t OldBtnState[3][5]            = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
-int8_t NewBtnState[3][5]            = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
-int8_t GBclip[2]                    = {1,1};
-int8_t LastBtnDrv                   = 4;
-int8_t MidiOnOff                    = 0;
-int8_t Page                         = 0;
-int8_t midisendmsg                  = 1;
-int8_t OldBtnRGBState               = 1;
-int8_t NewBtnRGBState               = 0;
-int8_t BtnTS                        = 3;
-int8_t BtnKOT                       = 4;
-int8_t dt                           = 20;
-int8_t dmidi                        = 0;
-int8_t debug                        = HIGH;
+int8_t        LedState[3][5]            = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+int8_t        OldBtnState[3][5]         = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
+int8_t        NewBtnState[3][5]         = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+int8_t        GBclip[2]                 = {1,1};
+int8_t        LastBtnDrv                = 4;
+int8_t        MidiOnOff                 = 0;
+int8_t        Page                      = 0;
+int8_t        midisendmsg               = 1;
+int8_t        OldBtnRGBState            = 1;
+int8_t        NewBtnRGBState            = 0;
+int8_t        BtnTS                     = 3;
+int8_t        BtnKOT                    = 4;
+int8_t        dt                        = 20;
+int8_t        dmidi                     = 1;
+int8_t        debug                     = HIGH;
+unsigned long time_now                  = 0;
+int           period                    = 50;
 
 //Midi Auxiliar Array
 char Val_msg[5][13];
@@ -82,11 +84,18 @@ int Midi_VaL_Off;
 
 void setup() {
   //start serial connection
-  // Serial.begin(9600);
+  //Serial.begin(9600);
   Serial.begin(115200);
-  MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library.
+//  MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library.
+  MIDI.begin(2);
+  MIDI.begin(1);
   MIDI.turnThruOff();
 
+  MIDI.setHandleControlChange(MyCCFunction); // This command tells the MIDI Library
+  MIDI.setHandleProgramChange(MyPCFunction); // This command tells the MIDI Library
+  // the function you want to call when a Continuous Controller command
+
+  
   //configure Switches [1-5] as Input and enable the internal pull-up resistor
   //configure Leds [1-5] as ouput 
   for (int i = 0; i < numControls; i++) {
@@ -125,40 +134,44 @@ void setup() {
 void loop() {
   
   Midireceive();
-  MIDI.read();
+
+  if(millis() > time_now + period){
+    time_now = millis();
+//    Serial.print("Time now --> ");
+//    Serial.println(time_now);          
+      
+    for(int i = 0; i < numControls; i++) {
+      NewBtnState[Page][i]=digitalRead(BtnPins[i]);
+      NewBtnRGBState=digitalRead(BtnRGBPin);
   
-  for(int i = 0; i < numControls; i++) {
-
-    NewBtnState[Page][i]=digitalRead(BtnPins[i]);
-    NewBtnRGBState=digitalRead(BtnRGBPin);
-
-    if (OldBtnState[Page][i] == 0 && NewBtnState[Page][i] ==1){
-      if (LedState[Page][i] == 0) {
-        // Button On
-        if (debug == HIGH){
-//          Serial.print("button on --> ");
-//          Serial.println(i);          
-        }
-        SubOn(i);
-      } else {   
-        // Button Off
-        if (debug == HIGH){
-//          Serial.print("button off --> ");
-//          Serial.println(i);          
-        }
-        SubOff(i);
-      } // Else
+      if (OldBtnState[Page][i] == 0 && NewBtnState[Page][i] ==1){
+        if (LedState[Page][i] == 0) {
+          // Button On
+          if (debug == HIGH){
+  //          Serial.print("button on --> ");
+  //          Serial.println(i);          
+          }
+          SubOn(i);
+        } else {   
+          // Button Off
+          if (debug == HIGH){
+  //          Serial.print("button off --> ");
+  //          Serial.println(i);          
+          }
+          SubOff(i);
+        } // Else
+      }
+      
+      if (OldBtnRGBState == 0 && NewBtnRGBState == 1){
+        SubsetRGB();
+      }
+      
+      OldBtnState[Page][i] = NewBtnState[Page][i];
+      
+      OldBtnRGBState = NewBtnRGBState;
     }
-    
-    if (OldBtnRGBState == 0 && NewBtnRGBState == 1){
-      SubsetRGB();
-    }
-    
-    OldBtnState[Page][i] = NewBtnState[Page][i];
-    
-    OldBtnRGBState = NewBtnRGBState;
-  }
-  delay(dt);
+//    delay(dt);
+  }    
 }
 
 int invertColor(int color) {
@@ -459,16 +472,6 @@ void SubRGBOrange() {
 //* Midi Library Funcions 
 // ======================
 
-void noteOn(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
-  MidiUSB.sendMIDI(noteOn);
-}
-
-void noteOff(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
-  MidiUSB.sendMIDI(noteOff);
-}
-
 void controlChange(byte channel, byte control, byte value) {
   midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
   MidiUSB.sendMIDI(event);
@@ -478,6 +481,26 @@ void programChange(byte channel, byte program) {
   midiEventPacket_t pc = {0x0C, 0xC0 | channel, program, 0};
   MidiUSB.sendMIDI(pc);
 }  
+
+void MyCCFunction(byte channel, byte number, byte value) {
+  Serial.println("### Received CC Message..: ");
+//  Serial.println();
+//  Serial.println(MIDI.getType());
+//  Serial.println(MIDI.getData1()),
+//  Serial.println(MIDI.getData2()),
+//  Serial.println(MIDI.getChannel());
+  
+}
+
+void MyPCFunction(byte channel, byte number) {
+  Serial.println("Program Changed..:");  
+//  Serial.println();
+//  Serial.println(MIDI.getType());
+//  Serial.println(MIDI.getData1()),
+//  Serial.println(MIDI.getData2()),
+//  Serial.println(MIDI.getChannel());
+
+}
 
 
 //* Receiving Midi Message
@@ -489,17 +512,18 @@ void Midireceive(){
       rx = MidiUSB.read();
       if (midisendmsg == 0) {
         if (rx.header != 0) {
+          Serial.print("### Receiving on Channel..: ");
           // Message Channel 0
           if ((rx.byte1 == 0xB0) && (rx.byte2 != 0)) {    
             int val_input1;
             memcpy(val_input1, rx.byte1, sizeof(rx.byte1));
-/*            Serial.print("### Receiving on Channel..: ");
+            Serial.print("### Receiving on Channel..: ");
             Serial.print(val_input1);
             Serial.print("  ### CC Message..: ");
             Serial.print(rx.byte2);
             Serial.print("  ### CC Value..: ");
             Serial.println(rx.byte3);
-*/  
+  
             int ind_btn = rx.byte2 -1;
             
             if (rx.byte3 == 127) {
@@ -516,8 +540,8 @@ void Midireceive(){
           } else {
             // Program change
             if (rx.byte1 == 0xC0) {
-//              Serial.print("Program Changed..:");
-//              Serial.println(rx.byte2);
+              Serial.print("Program Changed..:");
+              Serial.println(rx.byte2);
               SubResetPages();  
               SubSnap_1();
             } else {
@@ -548,8 +572,31 @@ void Midireceive(){
           }
         }
       }
-      midisendmsg = 0;       
+      midisendmsg = 0;  
     } while (rx.header != 0);
+
+    for (int i = 0; i <= 10; i++) {
+      if (MIDI.read())                    // If we have received a message
+      {
+        if (MIDI.getChannel() == 1 || MIDI.getChannel() == 2) {
+            Serial.println("Haaaaaaaaaaaaa");
+            Serial.print(" - Index : ");
+            Serial.print(i);
+
+            Serial.print(" ## Channel : ");
+            Serial.print(MIDI.getChannel());
+            Serial.print(" ## Type : ");
+            Serial.print(MIDI.getType());
+            Serial.print(" ## Data1 : ");
+            Serial.print(MIDI.getData1()),
+            Serial.print(" ## Data2 : ");
+            Serial.print(MIDI.getData2());
+            Serial.println();
+        } 
+      } else {
+        break;
+      }
+    }
 }
 
 int StrToHex(char str[])
@@ -642,7 +689,7 @@ void Midi_msg_prep(int btn, int OffOn){
 
 //  Serial.println("Sending Midi Message");
 
-  dmidi = 1;
+//  dmidi = 1;
  
   switch (btn) {
     case 0:    
@@ -656,15 +703,15 @@ void Midi_msg_prep(int btn, int OffOn){
       break;
     case 3:
       memcpy(Val_msg, Val_msg_btn4[Page], sizeTab);
-      if (Page == 0) {
-        dmidi = 5;
-      }
+//      if (Page == 0) {
+//        dmidi = 5;
+//      }
       break;
     case 4:
       memcpy(Val_msg, Val_msg_btn5[Page], sizeTab);
-      if (Page == 0) {
-        dmidi = 5;
-      }
+//      if (Page == 0) {
+//        dmidi = 5;
+//      }
       break;
     default:
       break;
@@ -690,8 +737,8 @@ void Midi_msg_prep(int btn, int OffOn){
         controlChange(Midi_CH, Midi_CC, Midi_VaL_Off);
         MIDI.sendControlChange(Midi_CC, Midi_VaL_Off, Midi_CH+1);
       }
-//      Serial.print("Midi_Tab_String -> ");
-//      Serial.println(Val_Str);
+      Serial.print("Midi_Tab_String -> ");
+      Serial.println(Val_Str);
       
       MidiUSB.flush();
       midisendmsg = 1;
