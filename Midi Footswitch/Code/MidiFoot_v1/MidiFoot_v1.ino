@@ -51,32 +51,32 @@ const char Val_msg_btn5[3][5][13] = {
                                     };
                                 
 // Buttons / Led Definitions / Table Size
-const int8_t  numControls               = 5;
-const int8_t  BtnPins[numControls]      = {2,3,4,5,7};
-const int8_t  LedPin[numControls]       = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
-const int8_t  LedRGBPin[3]              = {11,10,9};            // Red, Green, Blue
-const int8_t  BtnRGBPin                 = 12;   
-const int8_t  sizeTab                   = 65;
+const int8_t  numControls          = 5;
+const int8_t  BtnPins[numControls] = {2,3,4,5,7};
+const int8_t  LedPin[numControls]  = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
+const int8_t  LedRGBPin[3]         = {11,10,9};            // Red, Green, Blue
+const int8_t  BtnRGBPin            = 12;   
+const int8_t  sizeTab              = 65;
 
 
 // Variables
-int8_t        LedState[3][5]            = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
-int8_t        OldBtnState[3][5]         = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
-int8_t        NewBtnState[3][5]         = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
-int8_t        GBclip[2]                 = {1,1};
-int8_t        LastBtnDrv                = 4;
-int8_t        MidiOnOff                 = 0;
-int8_t        Page                      = 0;
-int8_t        midisendmsg               = 1;
-int8_t        OldBtnRGBState            = 1;
-int8_t        NewBtnRGBState            = 0;
-int8_t        BtnTS                     = 3;
-int8_t        BtnKOT                    = 4;
-int8_t        dt                        = 20;
-int8_t        debug                     = HIGH;
-int8_t        usb_flag                   = 0;
-unsigned long time_now                  = 0;
-int           period                    = 20;
+int8_t        LedState[3][5]       = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}}; // Off using Normal Logic
+int8_t        BtnState[3][5]       = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}}; // Off using Inverted Logic
+int8_t        NewBtnState[3][5]    = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}}; // On  using Inverted Logic
+int8_t        GBclip[2]            = {1,1};
+int8_t        LastBtnDrv           = 4;
+int8_t        MidiOnOff            = 0;
+int8_t        Page                 = 0;
+int8_t        midisendmsg          = 1;
+int8_t        BtnRGBState          = 1; // Off using Inverted Logic
+int8_t        NewBtnRGBState       = 0; // On  using Inverted Logic
+int8_t        BtnTS                = 3;
+int8_t        BtnKOT               = 4;
+int8_t        dt                   = 20;
+int8_t        debug                = LOW;
+int8_t        usb_flag             = 0;
+unsigned long time_now             = 0;
+int           period               = 50;
 
 //Midi Auxiliar Array
 char Val_msg[5][13];
@@ -98,8 +98,10 @@ void setup() {
   MIDI.turnThruOff();
 
   MIDI.setHandleControlChange(MyCCFunction); // This command tells the MIDI Library
+                                              // the function you want to call when a Continuous Controller command is received
+  
   MIDI.setHandleProgramChange(MyPCFunction); // This command tells the MIDI Library
-  // the function you want to call when a Continuous Controller command
+                                             // the function you want to call when a Program change command is received.
 
   
   //configure Switches [1-5] as Input and enable the internal pull-up resistor
@@ -127,10 +129,9 @@ void setup() {
     }
   }
 
-  delay(5000);
+  delay(1000);
 
   //Enable RGB LED with Magenta Colour and turn off all other Leds.
-  delay(200);
   SubRGBMagenta();
   SubSnap_1();
   Serial.println("Cremoso Midi Started....");          
@@ -149,7 +150,7 @@ void loop() {
       NewBtnState[Page][i]=digitalRead(BtnPins[i]);
       NewBtnRGBState=digitalRead(BtnRGBPin);
   
-      if (OldBtnState[Page][i] == 1 && NewBtnState[Page][i] ==0){
+      if (BtnState[Page][i] == 1 && NewBtnState[Page][i] ==0){
         if (LedState[Page][i] == 0) {
           // Button On
           if (debug == HIGH){
@@ -167,15 +168,14 @@ void loop() {
         } // Else
       }
       
-      if (OldBtnRGBState == 0 && NewBtnRGBState == 1){
+      if (BtnRGBState == 0 && NewBtnRGBState == 1){
         SubsetRGB();
       }
       
-      OldBtnState[Page][i] = NewBtnState[Page][i];
+      BtnState[Page][i] = NewBtnState[Page][i];
       
-      OldBtnRGBState = NewBtnRGBState;
+      BtnRGBState = NewBtnRGBState;
     }
-//    delay(dt);
   }    
 }
 
@@ -187,7 +187,7 @@ int invertColor(int color) {
 // ==================
 
 void SubOn(int btnind) {
-  
+
   switch (Page) {
     case 0:  //* Magenta
       Midi_msg_prep(btnind,1);
@@ -366,13 +366,14 @@ void SubLedsOff(int btnind) {
 void SubBtnOff(int btnind) {
   for(int i = 0; i < numControls; i++) {
     if ( i != btnind) {
-      OldBtnState[Page][i] = 1;
+      BtnState[Page][i] = 1;
     }    
   }
 }
 
 //*-------------------------------------------------------
 void SubSnap_1() {
+
   Page = 0;
 
   // Resetting Page
@@ -382,12 +383,11 @@ void SubSnap_1() {
   }
 
   //  Snapshot 1
-  LedState[0][0]    = 1;
-  OldBtnState[0][0] = 1;
+  LedState[0][0] = 1;
+  BtnState[0][0] = 1;
   digitalWrite(LedPin[0],HIGH);
+  Midi_msg_prep(0,1);
   
-  //  Ep-Booster
-  LedState[1][4] = 1;
 }
 
 //*-------------------------------------------------------
@@ -471,6 +471,7 @@ void programChange(byte channel, byte program) {
 
 //*-------------------------------------------------------
 void MyCCFunction(byte channel, byte number, byte value) {
+Serial.println("MyCCFunction - ### Received CC Message..: ");  
 /*  
   Serial.println("### Received CC Message..: ");
   Serial.print("Channel.: ");
@@ -503,7 +504,7 @@ void MyCCFunction(byte channel, byte number, byte value) {
 
 //*-------------------------------------------------------
 void MyPCFunction(byte channel, byte number) {
-  Serial.println("Program Changed..:");  
+  Serial.println("MyPCFunction - Program Changed..:");  
   SubRGBMagenta();
   SubResetAllPages();
   SubSnap_1();
@@ -584,6 +585,7 @@ void SubLoadGB(int CC_midi, int CC_msg){
   Serial.print(CC_msg);
   Serial.println();
   Serial.println(Page);
+Serial.println(midisendmsg);
   
   switch (CC_midi) {
     case 1:  //* Golden Boy ON/OFF
@@ -627,15 +629,15 @@ void SubLoadGB(int CC_midi, int CC_msg){
       break;
     case 2: //* Boost ON/OFF
       if (CC_msg == 127) {
-          LedState[2][0] = 1;
+          LedState[2][2] = 1;
           if (Page == 2) {
-            digitalWrite(LedPin[0],HIGH);
+            digitalWrite(LedPin[2],HIGH);
           }
       } else {
         if (CC_msg == 0) {
-          LedState[2][0] = 0;
+          LedState[2][2] = 0;
           if (Page == 2) {
-            digitalWrite(LedPin[0],LOW);
+            digitalWrite(LedPin[2],LOW);
           }
         }
       }
@@ -657,15 +659,15 @@ void SubLoadGB(int CC_midi, int CC_msg){
       break;
     case 4: //* Gain          
       if (CC_msg == 2) {   // 
-          LedState[2][2] = 0;
+          LedState[2][0] = 0;
           if (Page == 2) {
-            digitalWrite(LedPin[2],LOW);
+            digitalWrite(LedPin[0],LOW);
           }
       } else {
         if (CC_msg == 4) {
-          LedState[2][2] = 1;
+          LedState[2][0] = 1;
           if (Page == 2) {
-            digitalWrite(LedPin[2],HIGH);
+            digitalWrite(LedPin[0],HIGH);
           }
         }
       }
