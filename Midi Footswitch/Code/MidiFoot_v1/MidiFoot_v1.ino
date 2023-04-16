@@ -12,7 +12,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 //      - 3 bytes - CC Midi
 //      - 3 bytes - CC Val On
 //      - 3 bytes - CC Val Off
-//  
+//
 // HX Stop Special Midi Messages
 // -----------------------------
 // MIDI message: CC 72 value 64-127 = next preset, value 0-63 = previous preset
@@ -55,7 +55,7 @@ const int8_t  numControls          = 5;
 const int8_t  BtnPins[numControls] = {2,3,4,5,7};
 const int8_t  LedPin[numControls]  = {A5,A4,A3,A2,A1};     // Blue , Green, Yellow, White, Red
 const int8_t  LedRGBPin[3]         = {11,10,9};            // Red, Green, Blue
-const int8_t  BtnRGBPin            = 12;   
+const int8_t  BtnRGBPin            = 12;
 const int8_t  sizeTab              = 65;
 
 
@@ -66,6 +66,8 @@ int8_t        NewBtnState[3][5]    = {{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}}; // O
 int8_t        GBclip[2]            = {1,1};
 int8_t        LastBtnDrv           = 4;
 int8_t        MidiOnOff            = 0;
+int8_t        ValOn                = 1;
+int8_t        ValOff               = 0;
 int8_t        Page                 = 0;
 int8_t        midisendmsg          = 1;
 int8_t        BtnRGBState          = 1; // Off using Inverted Logic
@@ -190,12 +192,16 @@ void SubOn(int btnind) {
 
   switch (Page) {
     case 0:  //* Magenta
-      Midi_msg_prep(btnind,1);
-      if (btnind == 3 || btnind == 4){
+      send_midi_msg(btnind,ValOn);
+      if (btnind == 3 || btnind == 4){     //* Program UP - Program Down
         SubLedBlink(btnind);
         SubResetAllPages();
         SubLoadBtnState();  
-        SubSnap_1();
+        //  Turn on Led on Snapshot 1
+        LedState[0][0] = 1;
+        BtnState[0][0] = 1;
+        digitalWrite(LedPin[0],HIGH);
+        // SubSnap_1();
       } else {
         SubBtnOff(btnind);
         SubLedsOff(btnind);
@@ -211,7 +217,7 @@ void SubOn(int btnind) {
         LedState[2][1] = 1;
         LedState[2][4] = 1;
       }
-      Midi_msg_prep(btnind,1);
+      send_midi_msg(btnind,ValOn);
       break;
     case 2: //* Orange
       if (btnind != 1 && LedState[Page][1] == 1){
@@ -238,9 +244,9 @@ void SubOn(int btnind) {
           digitalWrite(LedPin[btnind], HIGH );
           LedState[Page][btnind] = 1;
           if (btnind == 3 || btnind == 4){
-            Midi_msg_prep(btnind,MidiOnOff);
+            send_midi_msg(btnind,MidiOnOff);
           } else {
-            Midi_msg_prep(btnind,1);
+            send_midi_msg(btnind,ValOn);
           }
             
       } else {
@@ -255,7 +261,7 @@ void SubOn(int btnind) {
           LedState[Page][BtnKOT] = 1;
           //Activating Btn Page 1
           LedState[Page-1][btnind] = 1;
-          Midi_msg_prep(btnind,1);
+          send_midi_msg(btnind,ValOn);
         }
       }
       break;
@@ -277,7 +283,7 @@ void SubOff(int btnind) {
           LedState[Page+1][i3] = 0;
         }
       }
-      Midi_msg_prep(btnind,0);
+      send_midi_msg(btnind,0);
       digitalWrite(LedPin[btnind], LOW);
       LedState[Page][btnind] = 0;
       break;
@@ -308,9 +314,9 @@ void SubOff(int btnind) {
             }
         }
         LedState[Page][btnind] = 0;
-        Midi_msg_prep(btnind,MidiOnOff);
+        send_midi_msg(btnind,MidiOnOff);
       } else {
-        Midi_msg_prep(btnind,0);
+        send_midi_msg(btnind,ValOff);
         digitalWrite(LedPin[btnind], LOW);
         LedState[Page][btnind] = 0;
       }
@@ -386,7 +392,7 @@ void SubSnap_1() {
   LedState[0][0] = 1;
   BtnState[0][0] = 1;
   digitalWrite(LedPin[0],HIGH);
-  Midi_msg_prep(0,1);
+  send_midi_msg(0,1);
   
 }
 
@@ -679,7 +685,7 @@ Serial.println(midisendmsg);
 
 //* Sending Midi Message
 //  ==================== 
-void Midi_msg_prep(int btn, int OffOn){
+void send_midi_msg(int btn, int OffOn){
 
   Serial.print("Sending Midi Message.. ");
   Serial.print(btn);
@@ -724,6 +730,7 @@ void Midi_msg_prep(int btn, int OffOn){
       }
       Serial.print("Midi_Tab_String -> ");
       Serial.println(Val_Str);
+      
       
       MidiUSB.flush();
       midisendmsg = 1;
