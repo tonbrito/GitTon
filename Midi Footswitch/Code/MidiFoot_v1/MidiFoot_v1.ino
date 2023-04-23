@@ -88,6 +88,9 @@ int Midi_CH;
 int Midi_CC;
 int Midi_VaL_On;
 int Midi_VaL_Off;
+byte pc_channel_ant;
+byte pc_number_ant;
+
 
 
 void setup() {
@@ -464,58 +467,66 @@ void SubRGBOrange() {
 //* Midi Library Funcions 
 // ======================
 
-void controlChange(byte channel, byte control, byte value) {
-  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
-  MidiUSB.sendMIDI(event);
-}
-
-//*-------------------------------------------------------
+//*------Function not being used at the moment. -------------------
 void programChange(byte channel, byte program) {
   midiEventPacket_t pc = {0x0C, 0xC0 | channel, program, 0};
   MidiUSB.sendMIDI(pc);
 }  
 
-//*-------------------------------------------------------
-void MyCCFunction(byte channel, byte number, byte value) {
-Serial.println("MyCCFunction - ### Received CC Message..: ");  
-/*  
-  Serial.println("### Received CC Message..: ");
-  Serial.print("Channel.: ");
-  Serial.print(channel);
-  Serial.print(" # CC Msg.: ");
-  Serial.print(number);
-  Serial.print(" # CC Value.: ");
-  Serial.print(value);
-  Serial.println();
-*/  
-  if (channel == 1) {     // HX Stomp
-    int ind_btn = number -1; 
-    if (value == 127) {
-      LedState[1][ind_btn] = 1;
-      if (Page == 1) {
-        digitalWrite(LedPin[ind_btn],HIGH);
-      }
-    } else {
-      LedState[1][ind_btn] = 0;
-      if (Page == 1) {
-        digitalWrite(LedPin[ind_btn],LOW);
-      }  
-    }      
-  } else {
-    if (channel == 2) {     // Golden Boy
-      SubLoadGB(number, value);  
-    }
-  }
-}
-
-//*-------------------------------------------------------
-void MyPCFunction(byte channel, byte number) {
+//*----------------------------------------------------------------
+void MyPCFunction(byte pc_channel, byte pc_number) {
   Serial.println("MyPCFunction - Program Changed..:");  
+  Serial.print(pc_channel);
+  Serial.println(pc_number);
+  if (pc_channel == pc_channel_ant && pc_number == pc_number_ant) {
+    Serial.println("Same Program change message I sent before");
+    } else {
+      Serial.println("Sending PC change");
+      MIDI.sendProgramChange(pc_number,pc_channel+2);
+      pc_channel_ant = pc_channel;
+      pc_number_ant = pc_number;
+  }
   SubRGBMagenta();
   SubResetAllPages();
+  delay(50);
   SubSnap_1();
 }
 
+//*----------------------------------------------------------------
+void controlChange(byte channel, byte control, byte value) {
+  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
+  MidiUSB.sendMIDI(event);
+}
+
+//*----------------------------------------------------------------
+void MyCCFunction(byte cc_channel, byte cc_number, byte cc_value) {
+Serial.println("MyCCFunction - ### Received CC Message..: ");  
+  
+  Serial.println("### Received CC Message..: ");
+  Serial.print("Channel.: ");
+  Serial.print(cc_channel);
+  Serial.print(" # CC Msg.: ");
+  Serial.print(cc_number);
+  Serial.print(" # CC Value.: ");
+  Serial.print(cc_value);
+  Serial.println();
+  
+  if (cc_channel == 1) {     // HX Stomp
+    if (Page == 0) {
+      int ind_btn = cc_value; 
+      Serial.println(ind_btn);
+      SubBtnOff(ind_btn);
+      SubLedsOff(ind_btn);
+      digitalWrite(LedPin[ind_btn], HIGH );
+      LedState[Page][ind_btn] = 1;
+    }
+
+  } else {
+    if (cc_channel == 2) {     // Golden Boy
+      SubLoadGB(cc_number, cc_value);  
+    }
+  }
+}
 
 //* Receiving Midi Message
 //  ====================== 
