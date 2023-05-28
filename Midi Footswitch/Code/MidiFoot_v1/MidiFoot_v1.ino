@@ -100,7 +100,7 @@ void setup() {
   MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library.
 //  MIDI.begin(1, 2);
 //  MIDI.begin(1);
-  MIDI.turnThruOff();
+MIDI.turnThruOff();
 
   MIDI.setHandleControlChange(MyCCFunction); // This command tells the MIDI Library
                                               // the function you want to call when a Continuous Controller command is received
@@ -510,19 +510,44 @@ Serial.println("MyCCFunction - ### Received CC Message..: ");
   Serial.print(" # CC Value.: ");
   Serial.print(cc_value);
   Serial.println();
+  Serial.print(" PAge.: ");
+  Serial.println(Page);
   
-  if (cc_channel == 1) {     // HX Stomp
-    if (Page == 0) {
+
+  if (cc_channel == 1) {     
+    if (cc_number == 69) {     // HX Stomp Snapshots changes
       int ind_btn = cc_value; 
-      Serial.println(ind_btn);
-      SubBtnOff(ind_btn);
-      SubLedsOff(ind_btn);
-      digitalWrite(LedPin[ind_btn], HIGH );
-      LedState[Page][ind_btn] = 1;
+
+      for(int i = 0; i < numControls; i++) {
+        LedState[0][i] = 0;
+      }
+      LedState[0][ind_btn] = 1;        
+
+      if (Page == 0) {
+        Serial.println(ind_btn);
+        SubBtnOff(ind_btn);
+        SubLedsOff(ind_btn);
+        digitalWrite(LedPin[ind_btn], HIGH );
+      }
+    } else {
+      if (cc_number >= 0 && cc_number <= 5) {
+
+//      cc_channel, byte cc_number, byte cc_value  
+//      Midi_CH      = ((Val_Str.substring(0,3).toInt())-1);
+//      Midi_CC      =  (Val_Str.substring(3,6).toInt());
+//      Midi_VaL_On  =  (Val_Str.substring(6,9).toInt());
+//      Midi_VaL_Off =  (Val_Str.substring(9,12).toInt());
+        controlChange(cc_channel, cc_number, cc_value);
+        MIDI.sendControlChange(cc_number, cc_value, cc_channel);
+      }
     }
+
+
 
   } else {
     if (cc_channel == 2) {     // Golden Boy
+      controlChange(cc_channel, cc_number, cc_value);
+      MIDI.sendControlChange(cc_number, cc_value, cc_channel);
       SubLoadGB(cc_number, cc_value);  
     }
   }
